@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Ultimate Human Test</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#111;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
+.game{width:min(680px,100%);background:#1b1b1b;border:1px solid #333;border-radius:20px;padding:28px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+h1{font-size:clamp(30px,8vw,52px);line-height:1;margin:0 0 18px}
+h2{font-size:25px;margin:0 0 16px}
+p{font-size:16px;line-height:1.55;color:#ddd}
+.small{font-size:13px;color:#999;letter-spacing:1px}
+button{font:inherit}
+.start,.next,.restart{width:100%;padding:15px;border:0;border-radius:12px;background:#f5f5f5;color:#111;font-weight:800;cursor:pointer;margin-top:18px}
+.option{display:block;width:100%;padding:15px 16px;margin:10px 0 0;border:1px solid #3b3b3b;border-radius:12px;background:#242424;color:#f5f5f5;text-align:left;cursor:pointer}
+.option:hover{background:#2d2d2d;border-color:#777}
+.option:disabled{cursor:default;opacity:.75}
+.reaction{margin-top:18px;padding:15px;border-radius:10px;background:#292929;border-left:3px solid #f5f5f5;color:#eee;line-height:1.5}
+.progress{height:6px;background:#292929;border-radius:99px;overflow:hidden;margin-bottom:20px}
+.bar{height:100%;background:#f5f5f5;width:0;transition:width .25s}
+.hidden{display:none}
+.result-title{font-size:clamp(28px,7vw,46px);font-weight:900;line-height:1.05}
+hr{border:0;border-top:1px solid #333;margin:24px 0}
+</style>
+</head>
+<body>
+<main class="game">
+<section id="intro">
+<div class="small">CLASSIFIED ASSESSMENT</div>
+<h1>THE ULTIMATE<br>HUMAN TEST</h1>
+<p>This will determine if you're <b>normal</b>, <b>suspicious</b>, or <b>deeply concerning</b>.</p>
+<p>There are no wrong answers.</p>
+<p><b>However, there will be consequences.</b></p>
+<button class="start" id="start">BEGIN ASSESSMENT</button>
+</section>
+
+<section id="quiz" class="hidden">
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="small" id="counter"></div>
+<div style="height:10px"></div>
+<h2 id="question"></h2>
+<p id="setup"></p>
+<div id="options"></div>
+<div id="reaction" class="reaction hidden"></div>
+<button class="next hidden" id="next">CONTINUE</button>
+</section>
+
+<section id="result" class="hidden">
+<div class="small">ASSESSMENT COMPLETE</div>
+<div class="result-title" id="resultTitle"></div>
+<p id="resultText"></p>
+<p><b>YOUR SCORE: <span id="score"></span></b></p>
+<hr>
+<div class="small">PERSONALITY REPORT</div>
+<p id="report"></p>
+<button class="restart" id="restart">RUN TEST AGAIN</button>
+</section>
+</main>
+
+<script>
+const questions=[
+{q:"QUESTION 1",setup:"A pigeon is staring directly at you. What will you do?",options:[
+["Stare back to establish dominance",2,"The pigeon has accepted your challenge."],
+["Ask wtf it wants",1,"The pigeon refuses to comment."],
+["Follow it. This is clearly a side quest",3,"Side quest accepted."],
+["Say sorry for breathing same air as him",0,"You apologised to a pigeon. This is exactly the sort of behaviour we were looking for."]
+]},
+{q:"QUESTION 2",setup:"You've been waiting for a bus for 25 minutes. You finally see it coming. Unfortunately, there is someone standing slightly too close to the bus stop.",options:[
+["Get on normally",1,"A perfectly normal decision. Suspicious."],
+["Make awkward eye contact",2,"The eye contact lasted 0.7 seconds. You will think about it tonight."],
+["Pretend you didn't see the bus",3,"The bus has left. You have achieved absolutely nothing."],
+["Let them get on first because you're British and apparently incapable of prioritising yourself",0,"There it is. The inability to prioritise yourself remains completely intact."]
+]},
+{q:"QUESTION 3",setup:"It's 28°C in the UK. The entire country has stopped functioning. Someone has fainted in a pub. Three people are arguing about whether this counts as a heatwave. What is your response?",options:[
+["It's actually quite pleasant",1,"Pleasant at 28°C. Someone check his passport."],
+["Open every window and immediately regret it",2,"Bold move. The temperature remains unchanged."],
+["Complain that it's too hot, then complain when it rains tomorrow",3,"Correct. Nothing satisfies you."],
+["Say it's too damn hot for a penguin to be just walkin' around here.",4,"Excellent. Completely irrelevant. We respect it."]
+]},
+{q:"QUESTION 4",setup:"Your girlfriend has been annoying you for approximately 47 consecutive minutes. You have remained remarkably calm. What is your next move?",options:[
+["Politely ask her to stop",1,"Adorable."],
+["Say nothing and hope she eventually gets bored",2,"You have mistaken persistence for boredom."],
+["Remain calm. You have accepted that this is simply your life now",3,"You have accepted that this is your life now."],
+["Say \"Someday, you gonna get bitch-slapped, and I'm not gonna do a thing to stop it.\"",4,"That escalated beautifully."]
+]},
+{q:"QUESTION 5",setup:"You are asked: “Surely you can't be serious”",options:[
+["I am serious",2,"Technically correct. But you missed the opportunity."],
+["yes",1,"That answer has caused irreversible disappointment."],
+["Unfortunately",3,"Lame."],
+["And don't call me Shirley",5,"Excellent. I will never forget the day I was coerced to watch the movie."]
+]},
+{q:"FINAL QUESTION",setup:"Please answer carefully. Are you ready to receive your results?",options:[
+["Yes",0,"Brave."],
+["Absolutely",0,"That's unnecessarily confident."],
+["No",0,"Unfortunately, it's too late."],
+["I would like to apologise first",0,"There it is. The British apology instinct."]
+]}
+];
+
+let index=0,score=0,answered=false;
+const intro=document.getElementById("intro"),quiz=document.getElementById("quiz"),result=document.getElementById("result");
+const question=document.getElementById("question"),setup=document.getElementById("setup"),options=document.getElementById("options");
+const reaction=document.getElementById("reaction"),next=document.getElementById("next"),bar=document.getElementById("bar"),counter=document.getElementById("counter");
+
+function showQuestion(){
+ const item=questions[index]; answered=false;
+ counter.textContent=`ASSESSMENT ${index+1} OF ${questions.length}`;
+ bar.style.width=`${(index/questions.length)*100}%`;
+ question.textContent=item.q; setup.textContent=item.setup; options.innerHTML="";
+ reaction.classList.add("hidden"); next.classList.add("hidden");
+ item.options.forEach((opt,i)=>{
+  const b=document.createElement("button");
+  b.className="option"; b.textContent=`${i+1}. ${opt[0]}`;
+  b.addEventListener("click",()=>choose(opt,b));
+  options.appendChild(b);
+ });
+}
+function choose(opt,button){
+ if(answered)return; answered=true;
+ document.querySelectorAll(".option").forEach(b=>b.disabled=true);
+ button.style.borderColor="#f5f5f5";
+ score+=opt[1]; reaction.textContent=opt[2]; reaction.classList.remove("hidden");
+ next.classList.remove("hidden"); next.focus();
+}
+function finish(){
+ quiz.classList.add("hidden"); result.classList.remove("hidden");
+ document.getElementById("score").textContent=score;
+ let title,text;
+ if(score<=7){title="SUSPICIOUSLY NORMAL";text="You have demonstrated alarming levels of common sense. We don't trust it."}
+ else if(score<=13){title="MILDLY CONCERNING";text="You're not a problem yet. But the machine is keeping an eye on you."}
+ else if(score<=18){title="DEEPLY CONCERNING";text="Several answers have raised questions. None of them have good answers."}
+ else{title="ABSOLUTELY UNFIT FOR SOCIETY";text="We asked for a human being. You gave us whatever this is."}
+ document.getElementById("resultTitle").textContent=title;
+ document.getElementById("resultText").textContent=text;
+ document.getElementById("report").innerHTML=
+ "Britishness: "+(score>=10?"Excessive":"Under investigation")+"<br>"+
+ "Pigeon relations: Complicated<br>"+
+ "Ability to prioritise yourself: 404 NOT FOUND<br>"+
+ "Common sense: Pending further investigation<br>"+
+ "Apology frequency: Concerning";
+}
+document.getElementById("start").onclick=()=>{intro.classList.add("hidden");quiz.classList.remove("hidden");index=0;score=0;showQuestion()};
+next.onclick=()=>{index++;if(index>=questions.length)finish();else showQuestion()};
+document.getElementById("restart").onclick=()=>{result.classList.add("hidden");intro.classList.remove("hidden")};
+</script>
+</body>
+</html>
